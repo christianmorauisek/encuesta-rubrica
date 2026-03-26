@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Rúbrica de Evaluación</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a237e">
+
+<style>
+body{
+  font-family:'Segoe UI',Arial;
+  margin:0;
+  background:#f4f6fb;
+  opacity:0;
+  transition:.3s;
+}
+
+.container{
+  max-width:1000px;
+  margin:auto;
+  padding:20px;
+}
+
+.card{
+  background:white;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+}
+
+h1,h2{
+  color:#1a237e;
+}
+
+input,select,textarea{
+  width:100%;
+  padding:8px;
+  margin:6px 0;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+
+button{
+  padding:10px 20px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  margin-top:10px;
+}
+
+.primary{background:#1a237e;color:white;}
+.secondary{background:#e0e7ff;}
+.success{background:#16a34a;color:white;}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+
+th{
+  background:#1a237e;
+  color:white;
+  padding:8px;
+}
+
+td{
+  border:1px solid #ddd;
+  padding:6px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<div id="app" class="card"></div>
+</div>
+
+<script>
+
+// ===== CONFIG =====
+const criterios = ["Claridad","Coherencia","Pertinencia","Relevancia"];
+const niveles = [1,2,3,4,5];
+
+// ===== ESTADO =====
+let state = {
+  step:0,
+  experto:{nombre:"",institucion:"",cargo:"",fecha:""},
+  valores:{},
+  sugerencias:"",
+  reporte:""
+};
+
+// ===== FUNCIONES =====
+function setState(n){
+  state = {...state,...n};
+  render();
+}
+
+function render(){
+
+  let html="";
+
+  // PASO 1
+  if(state.step===0){
+    html=`
+    <h2>Datos del Experto</h2>
+    <input placeholder="Nombre" onchange="update('nombre',this.value)">
+    <input placeholder="Institución" onchange="update('institucion',this.value)">
+    <input placeholder="Cargo" onchange="update('cargo',this.value)">
+    <input type="date" onchange="update('fecha',this.value)">
+    <button class="primary" onclick="next()">Continuar</button>`;
+  }
+
+  // PASO 2
+  if(state.step===1){
+    html=`<h2>Evaluación</h2>`;
+
+    for(let i=1;i<=5;i++){
+      html+=`<p><b>Ítem ${i}</b></p>`;
+
+      criterios.forEach(c=>{
+        html+=`
+        <label>${c}</label>
+        <select onchange="setVal('${i}','${c}',this.value)">
+        <option value="">-</option>
+        ${niveles.map(n=>`<option>${n}</option>`).join("")}
+        </select>`;
+      });
+    }
+
+    html+=`
+    <button class="secondary" onclick="prev()">←</button>
+    <button class="primary" onclick="next()">→</button>`;
+  }
+
+  // PASO 3
+  if(state.step===2){
+    html=`
+    <h2>Sugerencias</h2>
+    <textarea rows="6" onchange="state.sugerencias=this.value"></textarea>
+
+    <button class="secondary" onclick="prev()">←</button>
+    <button class="success" onclick="generar()">Generar Informe</button>`;
+  }
+
+  // PASO 4
+  if(state.step===3){
+    html=`
+    <div id="rpt">${state.reporte}</div>
+
+    <button onclick="printReport()">📄 Exportar PDF</button>
+    <button onclick="location.reload()">🔄 Nuevo</button>`;
+  }
+
+  document.getElementById("app").innerHTML=html;
+}
+
+// ===== LOGICA =====
+function update(k,v){ state.experto[k]=v; }
+function setVal(i,c,v){ state.valores[i+"_"+c]=v; }
+
+function next(){ setState({step:state.step+1}); }
+function prev(){ setState({step:state.step-1}); }
+
+function generar(){
+
+  let tabla="";
+
+  for(let i=1;i<=5;i++){
+    tabla+=`<tr><td>Item ${i}</td>`;
+
+    criterios.forEach(c=>{
+      tabla+=`<td>${state.valores[i+"_"+c]||"-"}</td>`;
+    });
+
+    tabla+="</tr>";
+  }
+
+  const html=`
+  <h1>Informe de Evaluación</h1>
+
+  <p><b>Nombre:</b> ${state.experto.nombre}</p>
+  <p><b>Institución:</b> ${state.experto.institucion}</p>
+  <p><b>Cargo:</b> ${state.experto.cargo}</p>
+  <p><b>Fecha:</b> ${state.experto.fecha}</p>
+
+  <table>
+  <tr>
+  <th>Item</th>
+  ${criterios.map(c=>`<th>${c}</th>`).join("")}
+  </tr>
+  ${tabla}
+  </table>
+
+  <h3>Sugerencias</h3>
+  <p>${state.sugerencias}</p>
+  `;
+
+  setState({reporte:html,step:3});
+}
+
+// ===== PDF =====
+function printReport(){
+
+  const contenido = document.getElementById('rpt').innerHTML;
+
+  const win = window.open('', '_blank');
+
+  win.document.write(`
+  <html>
+  <head>
+    <title>Informe</title>
+    <style>
+      @page { size:A4; margin:12mm; }
+      body{font-family:Arial;}
+      table{width:100%;border-collapse:collapse;}
+      th{background:#1a237e;color:#fff;padding:8px;}
+      td{border:1px solid #ddd;padding:6px;}
+    </style>
+  </head>
+  <body>${contenido}</body>
+  </html>`);
+
+  win.document.close();
+
+  setTimeout(()=>{
+    win.print();
+    win.close();
+  },500);
+}
+
+// INIT
+window.onload=()=>{
+  document.body.style.opacity=1;
+  render();
+}
+
+</script>
+
+</body>
+</html>
